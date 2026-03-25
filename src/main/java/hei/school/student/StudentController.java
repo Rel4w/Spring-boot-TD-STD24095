@@ -4,14 +4,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 public class StudentController {
 
-    private final List<Student> students = new ArrayList<>();
+    private final StudentValidator validator;
+    private final StudentService service;
 
+    public StudentController(StudentValidator validator, StudentService service) {
+        this.validator = validator;
+        this.service = service;
+    }
 
     @GetMapping("/welcome")
     public ResponseEntity<String> welcome(@RequestParam(required = false) String name) {
@@ -26,12 +30,17 @@ public class StudentController {
     }
 
     @PostMapping("/students")
-    public ResponseEntity<List<Student>> addStudents(@RequestBody List<Student> newStudents) {
+    public ResponseEntity<?> createStudents(@RequestBody List<Student> newStudents) {  // ← changé en <?>
         try {
-            students.addAll(newStudents);
-            return ResponseEntity.status(HttpStatus.CREATED).body(new ArrayList<>(students));
+            validator.validate(newStudents);                    // Validator
+            List<Student> saved = service.addStudents(newStudents);  // Service
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (BadRequestException e) {
+            return ResponseEntity.badRequest()
+                    .header("Content-Type", "text/plain")
+                    .body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -45,7 +54,7 @@ public class StudentController {
             }
 
             if ("application/json".equals(accept)) {
-                return ResponseEntity.ok(students);
+                return ResponseEntity.ok(service.getAllStudents());
             } else if ("text/plain".equals(accept)) {
                 return ResponseEntity.ok(getStudentsNames());
             } else {
@@ -58,11 +67,12 @@ public class StudentController {
     }
 
     private String getStudentsNames() {
-        if (students.isEmpty()) {
+        List<Student> all = service.getAllStudents();
+        if (all.isEmpty()) {
             return "Aucun étudiant enregistré.\n";
         }
         StringBuilder sb = new StringBuilder();
-        for (Student s : students) {
+        for (Student s : all) {
             sb.append(s.getFirstName()).append(" ").append(s.getLastName()).append("\n");
         }
         return sb.toString();
