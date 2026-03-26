@@ -30,10 +30,10 @@ public class StudentController {
     }
 
     @PostMapping("/students")
-    public ResponseEntity<?> createStudents(@RequestBody List<Student> newStudents) {  // ← changé en <?>
+    public ResponseEntity<?> createStudents(@RequestBody List<Student> newStudents) {
         try {
-            validator.validate(newStudents);                    // Validator
-            List<Student> saved = service.addStudents(newStudents);  // Service
+            validator.validate(newStudents);
+            List<Student> saved = service.addStudents(newStudents);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (BadRequestException e) {
             return ResponseEntity.badRequest()
